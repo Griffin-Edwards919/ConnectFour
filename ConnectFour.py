@@ -3,6 +3,7 @@ import pygame
 import sys
 import math
 import random
+import unittest
 
 BLUE = (0, 0, 255)
 BLACK = (0, 0, 0)
@@ -16,7 +17,9 @@ PLAYER = 0
 AI = 1
 AI_GAME = True
 PLAYER_ONE = None
-AI_LEVEL = 1 #0 = Always random moves, 1 = Picks best available move, 2 = Utilizes minimax algorithm to look ahead
+AI_LEVEL = 2 #0 = Always random moves, 1 = Picks best available move, 2 = Utilizes minimax algorithm to look ahead
+AI_ONLY_GAME = False
+MAX_DEPTH = 5
 
 def create_board():
     board = np.zeros((ROW_COUNT, COLUMN_COUNT))
@@ -145,7 +148,7 @@ def score_board(board, piece):
     return score
 
 def pick_best_move(board, piece):
-    max = -10000000
+    max = -math.inf
     best_column = -1
     for c in range(COLUMN_COUNT):
         if(is_valid_location(board, c)):
@@ -158,6 +161,61 @@ def pick_best_move(board, piece):
                 best_column = c
     return best_column
 
+def miniMax(board, depth, alpha, beta, maximize):
+    global checked_board_states, ai_has_won
+    if depth == MAX_DEPTH: checked_board_states, ai_has_won = [], False
+    col = None
+    try:
+        checked_board_states.index(board)
+        if maximize: return col, math.inf
+        else: return col, -math.inf
+    except:
+       pass
+    if board_is_full(board):
+        return col, 0
+    if depth == 0 or winning_move(board, 1) or winning_move(board, 2):
+        checked_board_states.append(board)
+        if winning_move(board, 2) and depth == MAX_DEPTH-1: ai_has_won = True
+        if depth == 0:
+            return col, score_board(board, 2)
+        if winning_move(board, 2):
+            return col, 10000000000000
+        else:
+            return col, -10000000000000
+    if maximize:
+        val = -math.inf
+        for c in range(COLUMN_COUNT):
+            if is_valid_location(board, c):
+                temp_board = board.copy()
+                drop_piece(temp_board, get_next_open_row(temp_board, c), c, 2)
+                temp_score = miniMax(temp_board, depth-1, alpha, beta, False)[1]
+                print(temp_board)
+                print(temp_score)
+                checked_board_states.append(temp_board)
+                if temp_score > val:
+                    val = temp_score
+                    col = c
+                if ai_has_won: return col, val
+                if alpha > val: alpha = val
+                if alpha >= beta: break
+        return col, val
+    else:
+        val = math.inf
+        for c in range(COLUMN_COUNT):
+            if is_valid_location(board, c):
+                temp_board = board.copy()
+                drop_piece(temp_board, get_next_open_row(temp_board, c), c, 1)
+                temp_score = miniMax(temp_board, depth - 1, alpha, beta, True)[1]
+                print(temp_board)
+                print(temp_score)
+                checked_board_states.append(temp_board)
+                if temp_score < val:
+                    val = temp_score
+                    col = c
+                if ai_has_won: return col, val
+                if beta < val: beta = val
+                if alpha >= beta: break
+        return col, val
 
 def draw_board(board):
     for c in range(COLUMN_COUNT):
@@ -205,9 +263,17 @@ pygame.display.update()
 
 myfont = pygame.font.SysFont("monospace", 75)
 
+if AI_GAME and turn == AI:
+    drop_piece(board, 0, 3, 2)
+    turn += 1
+    turn = turn % 2
+    print_board(board)
+    draw_board(board)
+
 while not game_over:
 
     for event in pygame.event.get():
+
         if event.type == pygame.QUIT:
             sys.exit()
 
@@ -257,9 +323,9 @@ while not game_over:
 
                     if winning_move(board, 2):
                         if PLAYER_ONE == "Player":
-                            label = myfont.render("Player 2 wins!!", 1, RED)
+                            label = myfont.render("Player 2 wins!!", 1, YELLOW)
                         else:
-                            label = myfont.render("Player 1 wins!!", 1, RED)
+                            label = myfont.render("Player 1 wins!!", 1, YELLOW)
                         screen.blit(label, (40, 10))
                         game_over = True
 
@@ -273,6 +339,7 @@ while not game_over:
 
         if AI_LEVEL == 0: col = random.randint(0, COLUMN_COUNT-1)
         if AI_LEVEL == 1: col = pick_best_move(board, 2)
+        if AI_LEVEL == 2: col = miniMax(board, MAX_DEPTH, -math.inf, math.inf, True)[0]
 
         if is_valid_location(board, col):
             row = get_next_open_row(board, col)
