@@ -3,7 +3,6 @@ import pygame
 import sys
 import math
 import random
-import unittest
 
 BLUE = (0, 0, 255)
 BLACK = (0, 0, 0)
@@ -18,31 +17,26 @@ AI = 1
 AI_GAME = True
 PLAYER_ONE = None
 AI_LEVEL = 2 #0 = Always random moves, 1 = Picks best available move, 2 = Utilizes minimax algorithm to look ahead
-AI_ONLY_GAME = False
-MAX_DEPTH = 5
+AI_ONLY_GAME = True
+MAX_DEPTH = 6
 
 def create_board():
     board = np.zeros((ROW_COUNT, COLUMN_COUNT))
     return board
 
-
 def drop_piece(board, row, col, piece):
     board[row][col] = piece
 
-
 def is_valid_location(board, col):
     return board[ROW_COUNT - 1][col] == 0
-
 
 def get_next_open_row(board, col):
     for r in range(ROW_COUNT):
         if board[r][col] == 0:
             return r
 
-
 def print_board(board):
     print(np.flip(board, 0))
-
 
 def winning_move(board, piece):
     # Check horizontal locations for win
@@ -72,7 +66,6 @@ def winning_move(board, piece):
             if board[r][c] == piece and board[r - 1][c + 1] == piece and board[r - 2][c + 2] == piece and board[r - 3][
                 c + 3] == piece:
                 return True
-
 
 def score_board(board, piece):
     score = 0
@@ -155,13 +148,12 @@ def pick_best_move(board, piece):
             temp_board = board.copy()
             drop_piece(temp_board, get_next_open_row(temp_board, c), c, piece)
             temp = score_board(temp_board, piece)
-            print(c, temp)
             if temp > max:
                 max = temp
                 best_column = c
     return best_column
 
-def miniMax(board, depth, alpha, beta, maximize):
+def miniMax(board, depth, alpha, beta, piece, maximize):
     global checked_board_states, ai_has_won
     if depth == MAX_DEPTH: checked_board_states, ai_has_won = [], False
     col = None
@@ -175,22 +167,15 @@ def miniMax(board, depth, alpha, beta, maximize):
         return col, 0
     if depth == 0 or winning_move(board, 1) or winning_move(board, 2):
         checked_board_states.append(board)
-        if winning_move(board, 2) and depth == MAX_DEPTH-1: ai_has_won = True
-        if depth == 0:
-            return col, score_board(board, 2)
-        if winning_move(board, 2):
-            return col, 10000000000000
-        else:
-            return col, -10000000000000
+        if winning_move(board, piece) and depth == MAX_DEPTH-1: ai_has_won = True
+        return col, score_board(board, piece)
     if maximize:
         val = -math.inf
         for c in range(COLUMN_COUNT):
             if is_valid_location(board, c):
                 temp_board = board.copy()
-                drop_piece(temp_board, get_next_open_row(temp_board, c), c, 2)
-                temp_score = miniMax(temp_board, depth-1, alpha, beta, False)[1]
-                print(temp_board)
-                print(temp_score)
+                drop_piece(temp_board, get_next_open_row(temp_board, c), c, piece)
+                temp_score = miniMax(temp_board, depth-1, alpha, beta, piece, False)[1]
                 checked_board_states.append(temp_board)
                 if temp_score > val:
                     val = temp_score
@@ -204,10 +189,8 @@ def miniMax(board, depth, alpha, beta, maximize):
         for c in range(COLUMN_COUNT):
             if is_valid_location(board, c):
                 temp_board = board.copy()
-                drop_piece(temp_board, get_next_open_row(temp_board, c), c, 1)
-                temp_score = miniMax(temp_board, depth - 1, alpha, beta, True)[1]
-                print(temp_board)
-                print(temp_score)
+                drop_piece(temp_board, get_next_open_row(temp_board, c), c, piece % 2 + 1)
+                temp_score = miniMax(temp_board, depth - 1, alpha, beta, piece, True)[1]
                 checked_board_states.append(temp_board)
                 if temp_score < val:
                     val = temp_score
@@ -263,8 +246,8 @@ pygame.display.update()
 
 myfont = pygame.font.SysFont("monospace", 75)
 
-if AI_GAME and turn == AI:
-    drop_piece(board, 0, 3, 2)
+if (AI_GAME and turn == AI) or AI_ONLY_GAME:
+    drop_piece(board, 0, 3, turn + 1)
     turn += 1
     turn = turn % 2
     print_board(board)
@@ -339,7 +322,7 @@ while not game_over:
 
         if AI_LEVEL == 0: col = random.randint(0, COLUMN_COUNT-1)
         if AI_LEVEL == 1: col = pick_best_move(board, 2)
-        if AI_LEVEL == 2: col = miniMax(board, MAX_DEPTH, -math.inf, math.inf, True)[0]
+        if AI_LEVEL == 2: col = miniMax(board, MAX_DEPTH, -math.inf, math.inf, 2, True)[0]
 
         if is_valid_location(board, col):
             row = get_next_open_row(board, col)
@@ -350,6 +333,30 @@ while not game_over:
                     label = myfont.render("Player 2 wins!!", 1, YELLOW)
                 else:
                     label = myfont.render("Player 1 wins!!", 1, YELLOW)
+                screen.blit(label, (40, 10))
+                game_over = True
+
+            turn += 1
+            turn = turn % 2
+
+            print_board(board)
+            draw_board(board)
+
+    if AI_ONLY_GAME and turn == PLAYER and not game_over:
+
+        if AI_LEVEL == 0: col = random.randint(0, COLUMN_COUNT-1)
+        if AI_LEVEL == 1: col = pick_best_move(board, 1)
+        if AI_LEVEL == 2: col = miniMax(board, MAX_DEPTH, -math.inf, math.inf, 1, True)[0]
+
+        if is_valid_location(board, col):
+            row = get_next_open_row(board, col)
+            drop_piece(board, row, col, 1)
+
+            if winning_move(board, 1):
+                if PLAYER_ONE == "Player":
+                    label = myfont.render("Player 2 wins!!", 1, RED)
+                else:
+                    label = myfont.render("Player 1 wins!!", 1, RED)
                 screen.blit(label, (40, 10))
                 game_over = True
 
