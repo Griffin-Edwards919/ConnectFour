@@ -10,7 +10,7 @@ def get_move(board, piece):
     global max_depth, checked_board_states
     t = time.time()
     max_depth = STARTING_DEPTH
-    while time.time() - t < 5:
+    while time.time() - t < 1.9:
         col = miniMax(board, max_depth, -math.inf, math.inf, piece, True)[0]
         max_depth += 1
     return col

@@ -294,11 +294,12 @@ while not game_over:
         if AI_LEVEL == 2:
             t = time.time()
             max_depth = STARTING_DEPTH
-            while time.time() - t < 5:
+            while time.time() - t < 1.9:
                 result = miniMax(board, max_depth, -math.inf, math.inf, 2, True)
                 col = result[0]
-                print(max_depth)
                 max_depth += 1
+        print(max_depth)
+        print(time.time() - t)
         if is_valid_location(board, col):
             row = get_next_open_row(board, col)
             drop_piece(board, row, col, 2)
@@ -322,11 +323,12 @@ while not game_over:
         if AI_LEVEL == 2:
             t = time.time()
             max_depth = STARTING_DEPTH
-            while time.time() - t < 5:
+            while time.time() - t < 1.9:
                 result = miniMax(board, max_depth, -math.inf, math.inf, 1, True)
                 col = result[0]
-                print(max_depth)
                 max_depth += 1
+        print(max_depth)
+        print(time.time() - t)
         if is_valid_location(board, col):
             row = get_next_open_row(board, col)
             drop_piece(board, row, col, 1)
